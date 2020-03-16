@@ -28,7 +28,6 @@ class RssFeedService: FeedService {
                         val rssFeedResponse = RssFeedResponse(episodes = mutableListOf())
                         domToRssFeedResponse(doc, rssFeedResponse)
                         callBack(rssFeedResponse)
-                        println(rssFeedResponse)
 // Parse response and send to callback
                         return
                     }
