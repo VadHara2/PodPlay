@@ -18,6 +18,7 @@ import com.vadhara7.podplay.R
 import com.vadhara7.podplay.adapter.PodcastListAdapter
 import com.vadhara7.podplay.repository.ItunesRepo
 import com.vadhara7.podplay.repository.PodcastRepo
+import com.vadhara7.podplay.service.FeedService
 import com.vadhara7.podplay.service.ItunesService
 import com.vadhara7.podplay.service.PodcastResponse
 import com.vadhara7.podplay.viewmodel.PodcastViewModel
@@ -95,7 +96,8 @@ class MainActivity : AppCompatActivity(), PodcastListAdapter.PodcastListAdapterL
         searchViewModel = ViewModelProviders.of(this).get(SearchViewModel::class.java)
         searchViewModel.iTunesRepo = ItunesRepo(service)
         podcastViewModel = ViewModelProviders.of(this).get(PodcastViewModel::class.java)
-        podcastViewModel.podcastRepo = PodcastRepo()
+        val rssService = FeedService.instance
+        podcastViewModel.podcastRepo = PodcastRepo(rssService)
     }
 
     private fun updateControls() {
