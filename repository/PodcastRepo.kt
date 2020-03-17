@@ -18,28 +18,43 @@ class PodcastRepo(private var feedService: FeedService, private var podcastDao: 
 
 
     fun getPodcast(feedUrl: String, callback: (Podcast?) -> Unit) {
-//      launch(CommonPool) {
-//            val podcast = podcastDao.loadPodcast(feedUrl)
-//            if (podcast != null) {
-//                podcast.id?.let {
-//                    podcast.episodes = podcastDao.loadEpisodes(it)
-//                    launch(UI){
-//                        callback(podcast)
-//                    }
-//                }
-//            } else {
-        feedService.getFeed(feedUrl) { feedResponse ->
-            var podcast: Podcast? = null
-            if (feedResponse != null) {
-                podcast = rssResponseToPodcast(feedUrl, "", feedResponse)
+
+        launch(CommonPool) {
+            val podcast = podcastDao.loadPodcast(feedUrl)
+            if (podcast != null) {
+                fromStorage(podcast,callback)
+            }else{
+                fromInternet(feedUrl,callback)
             }
-            launch(UI) {
+
+    }
+        }
+
+    fun fromStorage(podcast: Podcast, callback: (Podcast?) -> Unit) {
+        podcast.id?.let {
+            podcast.episodes = podcastDao.loadEpisodes(it)
+            launch(UI){
                 callback(podcast)
             }
         }
-//            }
-//       }
     }
+
+    fun fromInternet(feedUrl: String, callback: (Podcast?) -> Unit){
+
+        feedService.getFeed(feedUrl) { feedResponse ->
+            var podcast: Podcast?
+            if (feedResponse != null) {
+
+                podcast = rssResponseToPodcast(feedUrl, "", feedResponse)
+                launch(UI){
+                    callback(podcast)
+                }
+            }
+
+        }
+    }
+
+
 
     private fun rssItemsToEpisodes(episodeResponses:
                                    List<RssFeedResponse.EpisodeResponse>): List<Episode> {
@@ -57,13 +72,10 @@ class PodcastRepo(private var feedService: FeedService, private var podcastDao: 
         }
     }
 
-    private fun rssResponseToPodcast(feedUrl: String, imageUrl:
-    String, rssResponse: RssFeedResponse): Podcast? {
+    private fun rssResponseToPodcast(feedUrl: String, imageUrl: String, rssResponse: RssFeedResponse): Podcast? {
         val items = rssResponse.episodes ?: return null
-        val description = if (rssResponse.description == "")
-            rssResponse.summary else rssResponse.description
-        return Podcast(null, feedUrl, rssResponse.title, description, imageUrl,
-            rssResponse.lastUpdated, episodes = rssItemsToEpisodes(items))
+        val description = if (rssResponse.description == "") rssResponse.summary else rssResponse.description
+        return Podcast(null, feedUrl, rssResponse.title, description, imageUrl, rssResponse.lastUpdated, episodes = rssItemsToEpisodes(items))
     }
 
     fun save(podcast: Podcast) {

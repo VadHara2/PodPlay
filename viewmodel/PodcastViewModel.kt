@@ -55,7 +55,7 @@ class PodcastViewModel(application: Application) : AndroidViewModel(application)
     fun getPodcast(podcastSummaryViewData: SearchViewModel.PodcastSummaryViewData, callback: (PodcastViewData?) -> Unit) {
         val repo = podcastRepo ?: return
         val feedUrl = podcastSummaryViewData.feedUrl ?: return
-        repo.getPodcast(feedUrl) {
+        repo.getPodcast(feedUrl) {//11111111
             it?.let {
                 it.feedTitle = podcastSummaryViewData.name ?: ""
                 it.imageUrl = podcastSummaryViewData.imageUrl ?: ""
