@@ -69,6 +69,7 @@ class PodcastViewModel(application: Application) : AndroidViewModel(application)
     fun saveActivePodcast() {
         val repo = podcastRepo ?: return
         activePodcast?.let {
+            it.episodes = it.episodes.drop(1)
             repo.save(it)
         }
     }
@@ -99,6 +100,19 @@ class PodcastViewModel(application: Application) : AndroidViewModel(application)
         val repo = podcastRepo ?: return
         activePodcast?.let {
             repo.delete(it)
+        }
+    }
+
+    fun setActivePodcast(feedUrl: String, callback: (SearchViewModel.PodcastSummaryViewData?) -> Unit) {
+        val repo = podcastRepo ?: return
+        repo.getPodcast(feedUrl) { podcast ->
+            if (podcast == null) {
+                callback(null)
+            } else {
+                activePodcastViewData = podcastToPodcastView(podcast)
+                activePodcast = podcast
+                callback(podcastToSummaryView(podcast))
+            }
         }
     }
 

@@ -15,11 +15,13 @@ import androidx.appcompat.widget.SearchView
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.firebase.jobdispatcher.*
 import com.vadhara7.podplay.R
 import com.vadhara7.podplay.adapter.PodcastListAdapter
 import com.vadhara7.podplay.db.PodPlayDatabase
 import com.vadhara7.podplay.repository.ItunesRepo
 import com.vadhara7.podplay.repository.PodcastRepo
+import com.vadhara7.podplay.service.EpisodeUpdateService
 import com.vadhara7.podplay.service.FeedService
 import com.vadhara7.podplay.service.ItunesService
 import com.vadhara7.podplay.service.PodcastResponse
@@ -37,6 +39,7 @@ class MainActivity : AppCompatActivity(), PodcastListAdapter.PodcastListAdapterL
     private lateinit var searchMenuItem: MenuItem
 
     companion object {
+        private val TAG_EPISODE_UPDATE_JOB = "com.vadhara7.podplay.episodes"
         private val TAG_DETAILS_FRAGMENT = "DetailsFragment"
     }
 
@@ -50,6 +53,7 @@ class MainActivity : AppCompatActivity(), PodcastListAdapter.PodcastListAdapterL
         setupPodcastListView()
         handleIntent(intent)
         addBackStackListener()
+        scheduleJobs()
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -80,17 +84,25 @@ class MainActivity : AppCompatActivity(), PodcastListAdapter.PodcastListAdapterL
 
     private fun performSearch(term: String) {
         showProgressBar()
-        searchViewModel.searchPodcasts(term, { results ->
+        searchViewModel.searchPodcasts(term) { results ->
             hideProgressBar()
             toolbar.title = getString(R.string.search_results)
             podcastListAdapter.setSearchData(results)
-        })
+        }
     }
 
     private fun handleIntent(intent: Intent) {
         if (Intent.ACTION_SEARCH == intent.action) {
             val query = intent.getStringExtra(SearchManager.QUERY)
             performSearch(query)
+        }
+
+        val podcastFeedUrl = intent
+            .getStringExtra(EpisodeUpdateService.EXTRA_FEED_URL)
+        if (podcastFeedUrl != null) {
+            podcastViewModel.setActivePodcast(podcastFeedUrl) {
+                it?.let { podcastSummaryView -> onShowDetails(podcastSummaryView) }
+            }
         }
     }
 
@@ -207,6 +219,23 @@ class MainActivity : AppCompatActivity(), PodcastListAdapter.PodcastListAdapterL
         })
     }
 
+    private fun scheduleJobs() {
+        val dispatcher = FirebaseJobDispatcher(GooglePlayDriver(this))
+        val oneHourInSeconds = 60*60
+        val tenMinutesInSeconds = 60*10
+        val episodeUpdateJob = dispatcher.newJobBuilder()
+            .setService(EpisodeUpdateService::class.java)
+            .setTag(TAG_EPISODE_UPDATE_JOB)
+            .setRecurring(true)
+            .setTrigger(Trigger.executionWindow(tenMinutesInSeconds, (oneHourInSeconds + tenMinutesInSeconds)))
+            .setLifetime(Lifetime.FOREVER)
+            .setConstraints(
+                Constraint.ON_UNMETERED_NETWORK,
+                Constraint.DEVICE_CHARGING
+            )
+            .build()
+        dispatcher.mustSchedule(episodeUpdateJob)
+    }
 
 
 }
